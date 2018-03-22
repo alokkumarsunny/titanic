@@ -7,6 +7,7 @@
 \SweaveOpts{concordance=TRUE}
 
   \maketitle
+  \tableofcontents
 
 \section*{Data Collection :}
 There is two type of data set 
@@ -21,6 +22,9 @@ test.df = read.csv("Data/test.csv",
                    stringsAsFactors = FALSE, 
                    na.strings = c(""), 
                    header = T)
+sub.df = read.csv('Data/gender_submission.csv', header = T, na.string=c(""))
+
+test.df = merge(test.df, sub.df, by = "PassengerId")
 @
 
 \section*{Exploring Data:}
@@ -31,18 +35,34 @@ The trained dataset contains 891 observations and 12 features (Variable), and th
 str(train.df)
 @
 
+Pclass need to be converted in factor
+
+<<>>=
+train.df$Pclass = as.factor(train.df$Pclass)
+test.df$Pclass = as.factor(test.df$Pclass)
+@
+
+
 \section*{Preparion Data:}
 
 
 \subsection*{Missing Data Analysis }
 We have to analyse is there any missing data.
+
+Train Data:
 <<>>=
 sapply(train.df, function(x) sum(is.na(x)))
 @
 
+Test Data:
+
+<<>>=
+sapply(test.df, function(x) sum(is.na(x)))
+@
+
 Age and cabin need to handle. Lets check what fraction of data is missing in both.
 
-\subsubsection*{Cabin}
+\subsubsection*{Cabin in train data set}
 <<fig=TRUE>>=
 train.df['CabinMissing'] =  sapply(train.df$Cabin, 
                                    function(x) 
@@ -54,7 +74,21 @@ barplot(table(factor(train.df$CabinMissing)),
 
 @
 
-\subsubsection*{Age}
+
+\subsubsection*{Cabin in test data set}
+<<fig=TRUE>>=
+test.df['CabinMissing'] =  sapply(test.df$Cabin, 
+                                   function(x) 
+                                     ifelse(is.na(x),
+                                        "Missing","Avalable")
+                                   )
+barplot(table(factor(test.df$CabinMissing)), 
+        main = "Train Cabin Missing vs Avalable Data")
+
+@
+
+
+\subsubsection*{Age in train dataset}
 <<fig=TRUE>>=
 train.df['AgeMissing'] =  sapply(train.df$Age, 
                                  function(x) 
@@ -65,12 +99,28 @@ barplot(table(factor(train.df$AgeMissing)),
         main = "Train Age Missing vs Avalable")
 @
 
+
+\subsubsection*{Age in test dataset}
+<<fig=TRUE>>=
+test.df['AgeMissing'] =  sapply(test.df$Age, 
+                                 function(x) 
+                                  ifelse(is.na(x),
+                                    "Missing","Avalable")
+                                 )
+barplot(table(factor(test.df$AgeMissing)), 
+        main = "Train Age Missing vs Avalable")
+@
+
+
 Since cabin have many missing data we can remove this feather from out data set.
 
 <<>>=
 
 train.df  = subset(train.df, select = c(2,3,5,6,7,8,10,12))
+test.df = subset(test.df, select = c(2,4,5,6,7,9,11,12))
 
+names(train.df)
+names(test.df)
 @
 
 To handle missing value of Age we can apply one of these method.
@@ -90,10 +140,75 @@ cormat
 
 cormat <- round(cor(corr[, c('Age','Parch')]),2)
 cormat
+@
 
+No correlation found in Age and other predictor. hence regression is not used for missing age.
+we will fill age by avarage value.
 
+<<>>=
+agetrain = train.df$Age
+avgTrainAge = mean(agetrain, na.rm = T)
+train.df$Age[is.na(train.df$Age)] = avgTrainAge
+
+ageTest = test.df$Age
+avgTestAge = mean(ageTest, na.rm = T)
+test.df$Age[is.na(test.df$Age)] = avgTestAge
 
 @
+
+We can remove row with missing 
+
+<<>>=
+train.df = train.df[!is.na(train.df$Embarked),]
+test.df = test.df[!is.na(test.df$Fare),]
+@
+
+Now again checking missing value count
+
+\subsubsection*{Train data}
+<<>>=
+sapply(train.df, function(x) sum(is.na(x)))
+@
+
+\subsubsection*{Test data}
+<<>>=
+sapply(test.df, function(x) sum(is.na(x)))
+@
+
+
+\section*{Model on Train data}
+\subsection*{Logistic Regression}
+<<>>=
+glm1 = glm(train.df$Survived ~., family = binomial(link = 'logit'), data = train.df)
+summary(glm1)
+@
+
+\subsection*{Evauvate model}
+<<>>=
+testPredict = predict(glm1, newdata = subset(test.df, select = c(1:7)),
+                          type = 'response')
+testPredict = ifelse(testPredict >0.5, 1, 0)
+
+cm = table(test.df[, 'Survived'], testPredict > 0.5)
+cm
+@
+
+Acuracy
+
+<<>>=
+misClassifiError = mean(testPredict != test.df$Survived)
+#print(paste('Accuracy', 1 - testPredict))
+1- misClassifiError
+@
+
+
+
+
+
+
+
+
+
 
 
 
