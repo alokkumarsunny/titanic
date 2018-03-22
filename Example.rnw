@@ -1,0 +1,110 @@
+\documentclass[12pt]{article}
+
+\author{Alok Kumar}
+\title{Titanc}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+  \maketitle
+
+\section*{Data Collection :}
+There is two type of data set 
+
+
+<<>>=
+train.df = read.csv("Data/train.csv", 
+                    stringsAsFactors = FALSE, 
+                    na.strings = c(""), 
+                    header = T)  
+test.df = read.csv("Data/test.csv", 
+                   stringsAsFactors = FALSE, 
+                   na.strings = c(""), 
+                   header = T)
+@
+
+\section*{Exploring Data:}
+
+The trained dataset contains 891 observations and 12 features (Variable), and the tested dataset contains 418 observations.
+
+<<>>=
+str(train.df)
+@
+
+\section*{Preparion Data:}
+
+
+\subsection*{Missing Data Analysis }
+We have to analyse is there any missing data.
+<<>>=
+sapply(train.df, function(x) sum(is.na(x)))
+@
+
+Age and cabin need to handle. Lets check what fraction of data is missing in both.
+
+\subsubsection*{Cabin}
+<<fig=TRUE>>=
+train.df['CabinMissing'] =  sapply(train.df$Cabin, 
+                                   function(x) 
+                                     ifelse(is.na(x),
+                                        "Missing","Avalable")
+                                   )
+barplot(table(factor(train.df$CabinMissing)), 
+        main = "Train Cabin Missing vs Avalable Data")
+
+@
+
+\subsubsection*{Age}
+<<fig=TRUE>>=
+train.df['AgeMissing'] =  sapply(train.df$Age, 
+                                 function(x) 
+                                  ifelse(is.na(x),
+                                    "Missing","Avalable")
+                                 )
+barplot(table(factor(train.df$AgeMissing)), 
+        main = "Train Age Missing vs Avalable")
+@
+
+Since cabin have many missing data we can remove this feather from out data set.
+
+<<>>=
+
+train.df  = subset(train.df, select = c(2,3,5,6,7,8,10,12))
+
+@
+
+To handle missing value of Age we can apply one of these method.
+\begin{itemize}
+  \item Throw out any data with missing values
+  \item Assign the average value
+  \item Use a regression or another simple model to predict the values of missing variables
+\end{itemize}
+
+For checking weather we can use regression or not lets check correlation in predicter. 
+
+<<>>=
+corr = na.omit(train.df)
+
+cormat <- round(cor(corr[, c('Age','Fare')]),2)
+cormat
+
+cormat <- round(cor(corr[, c('Age','Parch')]),2)
+cormat
+
+
+
+@
+
+
+
+
+
+
+
+
+
+
+\clearpage
+  
+
+\end{document}
